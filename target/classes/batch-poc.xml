@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="batch-pocFlow" doc:id="03b46742-5f7e-4e3f-a158-8416dcd0b6b9" >
+		<scheduler doc:name="Scheduler" doc:id="301993e0-cab3-49ac-afed-0f4d4a1a3b36" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="10" timeUnit="MINUTES"/>
+			</scheduling-strategy>
+		</scheduler>
+		<set-payload value='#[%dw 2.0
+output application/json
+---
+[
+    {
+        "test": "111"
+    },
+    {
+        "test": "111"
+    },
+    {
+        "test": "111"
+    },
+    {
+        "test": "111"
+    },
+    {
+        "test": "111"
+    }
+]]' doc:name="Set Payload" doc:id="07ad38fa-9b62-45e7-9719-95f717cfe7f6" />
+		<batch:job jobName="batch-pocBatch_Job" doc:id="40d04326-11b3-4ecb-bb01-65687132cf88" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="da771bc2-a015-46c7-a99e-155a6ba636cc" >
+					<ee:transform doc:name="Transform Message" doc:id="c961efdd-6428-466b-afd3-ff822dd2153c" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "some_key": payload.test,
+    "new_key": "added new key"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="5e65b3b7-35d7-45dc-921e-77ac0d77d8a2" size="10" preserveMimeTypes="true">
+						<ee:transform doc:name="Transform Message" doc:id="91a2b0cf-6c4e-4de8-b578-19200662e1e7" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ((item, index) -> {
+    "transformed-key": item.some_key as String,
+    "new-key": item.new_key as String ++ "some extra text"
+})]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="ef4320bc-c3b1-451e-84e6-9a32b0e5dcdf" message='#["OK" as String]'/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>

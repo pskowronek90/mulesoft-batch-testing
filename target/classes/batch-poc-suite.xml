@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+	<munit:config name="batch-poc-suite.xml" />
+	<munit:test name="batch-pocFlow-test" doc:id="8fd13632-3d03-413c-878c-b85541cc89d0" >
+		<munit:behavior >
+			<munit-tools:spy doc:name="Spy" doc:id="bcbefb67-bb0f-481d-bca9-2f836b1ae603" processor="ee:transform">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Transform Message" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="91a2b0cf-6c4e-4de8-b578-19200662e1e7" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:after-call >
+					<munit-tools:queue doc:name="Transform" doc:id="1f0079d1-0378-408c-8020-98f171d7523f" queueName="transform"/>
+				</munit-tools:after-call>
+			</munit-tools:spy>
+			<munit-tools:spy doc:name="Spy" doc:id="c08710b2-8cb3-4a21-9057-f36da54fbeeb" processor="logger">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="ef4320bc-c3b1-451e-84e6-9a32b0e5dcdf" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:before-call >
+					<munit-tools:queue doc:name="Batch result" doc:id="5b1e14cc-cded-45b0-9dcc-9c02810675c6" queueName="batchResult"/>
+				</munit-tools:before-call>
+			</munit-tools:spy>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow Reference" doc:id="3d29d7af-e424-4f7e-a816-59b215de9126" name="batch-pocFlow"/>
+			<scatter-gather doc:name="Scatter-Gather" doc:id="1280fc73-4598-4ace-82e7-2d978f3cb889" >
+				<route >
+					<munit-tools:dequeue doc:name="Transform" doc:id="6ba10ce1-65bd-4f2a-a0a1-8d92423f6f2f" timeout="5" timeoutUnit="MINUTES" queueName="transform"/>
+					<ee:transform doc:name="Transform Message" doc:id="559fd6cc-dcdd-4694-bc81-6837578363f1">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="3b303fa3-96df-460f-8752-6bbe6b108b2e" message="#[payload]" />
+					<munit-tools:assert-equals doc:name="Assert equals" doc:id="529153d7-4667-43dd-a9d4-34e524e64c8c" actual="#[payload]" expected="#[readUrl('classpath://aggregationResult.json')]" />
+				</route>
+				<route >
+					<munit-tools:dequeue doc:name="Batch result" doc:id="2e492754-3c45-4d27-8f22-b30a9c56d600" timeout="5" timeoutUnit="MINUTES" queueName="batchResult"/>
+					<ee:transform doc:name="Transform Message" doc:id="40891488-9c27-4989-8671-1273b8e73af9">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="0ee1a707-873a-4f3e-aa9c-51faae695db4" message="#[payload]" />
+					<munit-tools:assert-equals doc:name="Assert equals" doc:id="d5ef1958-5890-4551-b90b-3cda35fa3be0" actual="#[payload.successfulRecords]" expected="#[5 as Number]" />
+				</route>
+			</scatter-gather>
+		</munit:execution>
+	</munit:test>
+
+
+</mule>
